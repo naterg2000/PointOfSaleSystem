@@ -1,7 +1,9 @@
 #include "gui.h"
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_impl_dx9.h"
-#include "../imgui/imgui_impl_win32.h"
+#include "../imgui_imports/imgui.h"
+#include "../imgui_imports/imgui_impl_dx9.h"
+#include "../imgui_imports/imgui_impl_win32.h"
+
+#include <iostream>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND window, UINT message, WPARAM wideParameter, LPARAM longParameter);
 
@@ -45,8 +47,9 @@ long __stdcall WindowProcess(HWND window, UINT message, WPARAM wideParameter, LP
 
 				GetWindowRect(gui::window, &rect);
 
+				// update window position
 				rect.left += points.x - gui::position.x;
-				rect.right += points.y - gui::position.y;
+				rect.top += points.y - gui::position.y;
 
 				if (gui::position.x >= 0 && gui::position.x <= gui::WIDTH && gui::position.y >= 0 && gui::position.y <= 19) {
 
@@ -122,17 +125,15 @@ bool gui::CreateDevice() noexcept
 	presetParameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 
 	// if CreateDevice returns a value < 0, it failed
-	if (
-		d3d->CreateDevice(
+	if (d3d->CreateDevice(
 			D3DADAPTER_DEFAULT,
 			D3DDEVTYPE_HAL,
 			window,
 			D3DCREATE_HARDWARE_VERTEXPROCESSING,
 			&presetParameters,
-			&device) < 0
-		) {
+			&device) < 0) 
 		return false;
-	}
+	
 	return true;
 
 
@@ -175,15 +176,76 @@ void gui::CreateImGui() noexcept
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ::ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 
 	io.IniFilename = NULL;	// prevents ImGui.ini file
+	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;	// enable multiple viewports
 
+	ImGuiStyle& style = ImGui::GetStyle();
 	ImGui::StyleColorsDark();
+	style.WindowRounding = 0.0f;
+	
+	// specify colors if viewports are enabled
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+
+
+	// make main viewport
+	/*const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 650, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+	const ImVec2 base_pos = main_viewport->Pos;*/
+
+
+	// handle child window creation and buffer swapping
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+
+	device->Present(NULL, NULL, NULL, NULL);
 
 	ImGui_ImplWin32_Init(window);
 	ImGui_ImplDX9_Init(device);
 
+}
+
+void gui::CreateSecondaryViewportContext() noexcept
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.IniFilename = NULL;	// prevents ImGui.ini file
+	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;	// enable multiple viewports
+
+	ImGuiStyle& style = ImGui::GetStyle();
+	ImGui::StyleColorsDark();
+	style.WindowRounding = 0.0f;
+
+	// specify colors if viewports are enabled
+	/*if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}*/
+
+
+	// make main viewport
+	//const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+	//ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 650, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
+	//ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+	//const ImVec2 base_pos = main_viewport->Pos;
+
+
+	// handle child window creation and buffer swapping
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+
+	device->Present(NULL, NULL, NULL, NULL);
+
+	//ImGui_ImplWin32_Init(&main_viewport);
+	ImGui_ImplWin32_Init(window);
+	ImGui_ImplDX9_Init(device);
 }
 
 // destroy ImGui 
@@ -206,10 +268,19 @@ void gui::BeginRender() noexcept
 		DispatchMessage(&message);
 	}
 
+
 	// start the ImGui frame
 	ImGui_ImplDX9_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+
+	// Update and Render additional Platform Windows
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
 
 }
 
@@ -240,6 +311,8 @@ void gui::EndRender() noexcept
 void gui::Render() noexcept 
 {
 
+	ImGuiIO& io = ImGui::GetIO();
+
 	ImGui::SetNextWindowPos({0, 0});
 	ImGui::SetNextWindowSize({ WIDTH, HEIGHT });
 	ImGui::Begin(
@@ -252,6 +325,18 @@ void gui::Render() noexcept
 	);
 
 	ImGui::Button("300 lines of code for this?");
+
+	if (ImGui::Button("Caramel Macchiato")) {
+		ImGui::Button("The click worked!");
+	}
+	
+
+	// Update and Render additional Platform Windows
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
 
 	ImGui::End();
 

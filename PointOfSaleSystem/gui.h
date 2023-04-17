@@ -6,8 +6,8 @@ namespace gui
 {
 
 	// constant window size
-	constexpr int WIDTH = 500;
-	constexpr int HEIGHT = 300;
+	constexpr int WIDTH = 900;
+	constexpr int HEIGHT = 700;
 
 	inline bool exit = true;
 
@@ -34,6 +34,7 @@ namespace gui
 
 	// handle ImGui creation and destruction
 	void CreateImGui() noexcept;
+	void CreateSecondaryViewportContext() noexcept;
 	void DestroyImGui() noexcept;
 
 	void BeginRender() noexcept;
